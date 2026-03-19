@@ -1,0 +1,33 @@
+[package]
+name = "zflyclient"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["cli"]
+cli = ["dep:tonic", "dep:prost", "dep:tokio", "dep:clap", "dep:hex", "dep:tonic-build"]
+
+[dependencies]
+# Core verification library (no_std compatible)
+blake2b_simd = { version = "1", default-features = false }
+equihash = { version = "0.2", default-features = false }
+byteorder = { version = "1", default-features = false }
+thiserror = { version = "2", default-features = false }
+
+# CLI-only deps (behind "cli" feature)
+tonic = { version = "0.12", optional = true }
+prost = { version = "0.13", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+hex = { version = "0.4", optional = true }
+
+[[bin]]
+name = "zflyclient"
+required-features = ["cli"]
+
+[build-dependencies]
+tonic-build = { version = "0.12", optional = true }
+
+[dev-dependencies]
+hex = "0.4"
+zcash_history = "0.4"

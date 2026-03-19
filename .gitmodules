@@ -1,0 +1,3 @@
+[submodule "lightwallet-protocol"]
+	path = lightwallet-protocol
+	url = https://github.com/ordian/lightwallet-protocol.git
