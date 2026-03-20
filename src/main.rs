@@ -46,23 +46,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let channel = Channel::from_shared(cli.server.clone())?.connect().await?;
     let mut client = CompactTxStreamerClient::new(channel);
 
-    // Get the tip block header (for PoW + hashBlockCommitments verification)
-    let tip = client
-        .get_latest_block(proto::ChainSpec {})
-        .await?
-        .into_inner();
-    println!("Chain tip: height {}", tip.height);
-
-    let tip_block = client
-        .get_block(proto::BlockId {
-            height: tip.height,
-            hash: vec![],
-        })
-        .await?
-        .into_inner();
-    let tip_header = &tip_block.header;
-    println!("Tip header: {} bytes", tip_header.len());
-
     // Verify each block
     for &height in &cli.blocks {
         print!("Block {}: ", height);
@@ -80,6 +63,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
+
+        // Fetch the block header at tip_height — this is the block whose header
+        // commits to mmr_root and auth_data_root via hashBlockCommitments.
+        let commit_height = resp.tip_height;
+        let commit_block = client
+            .get_block(proto::BlockId {
+                height: commit_height as u64,
+                hash: vec![],
+            })
+            .await?
+            .into_inner();
+        let commit_header = &commit_block.header;
 
         let mmr_root: [u8; 32] = resp
             .mmr_root
@@ -109,12 +104,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data: s.data.clone(),
                 })
                 .collect(),
+            tip_height: commit_height,
         };
 
-        match zflyclient::verify_block_inclusion(tip_header, &proof, branch_id) {
+        match zflyclient::verify_block_inclusion(commit_header, &proof, branch_id) {
             Ok(_header) => {
                 println!(
-                    "VERIFIED (mmr_root={}, {} siblings)",
+                    "VERIFIED (tip={}, mmr_root={}, {} siblings)",
+                    commit_height,
                     hex::encode(&proof.mmr_root[..8]),
                     proof.siblings.len()
                 );

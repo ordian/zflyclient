@@ -19,7 +19,7 @@ ZIP-221 specifies a Merkle Mountain Range (MMR) commitment in every block header
 Added proto messages and RPC to `service.proto`:
 
 - **`MMRNode`** — a node in the MMR tree (position + serialized entry bytes)
-- **`BlockInclusionProof`** — MMR root, auth data root, and Merkle path proving a block is in the committed chain
+- **`BlockInclusionProof`** — MMR root, auth data root, Merkle path proving a block is in the committed chain, and `tip_height` identifying the committing block
 - **`GetBlockInclusionProof`** RPC — returns an inclusion proof for a specific block height
 
 ### [zaino](https://github.com/ordian/zaino) ([PR](https://github.com/zingolabs/zaino/pull/922))
@@ -28,7 +28,7 @@ Server-side MMR tree construction and proof generation:
 
 - **`zaino-state/src/chain_index/mmr.rs`** — Core MMR tree implementation. Builds the tree in-memory from LMDB-stored block headers and commitment tree data. Supports incremental append (new blocks) and truncate (reorgs). Generates inclusion proofs for any block height.
 - **Sync loop integration** — The MMR is updated in Zaino's existing sync loop immediately after finalized blocks are written, using a push-based design (no polling).
-- **`GetBlockInclusionProof` handler** — Returns the MMR root, auth data root (ZIP-244), and a Merkle path proof for a requested block height.
+- **`GetBlockInclusionProof` handler** — Returns the MMR root, auth data root (ZIP-244), a Merkle path proof for a requested block height, and the `tip_height` of the committing block.
 
 ### zflyclient (this repo)
 
@@ -75,10 +75,10 @@ cargo test
 
 **Verification flow:**
 
-1. Client calls `GetLatestBlock` to learn the tip height, then `GetBlock` to get the full tip block header
-2. Client selects blocks to challenge using the [FlyClient sampling distribution](https://eprint.iacr.org/2019/226)
-3. For each sampled block, client calls `GetBlockInclusionProof(height)` which returns the MMR root, auth data root, and Merkle path
-4. Client verifies the tip header:
+1. Client selects blocks to challenge using the [FlyClient sampling distribution](https://eprint.iacr.org/2019/226)
+2. For each sampled block, client calls `GetBlockInclusionProof(height)` which returns the MMR root, auth data root, Merkle path, and `tip_height`
+3. Client calls `GetBlock(tip_height)` to get the block header that commits to the MMR root
+4. Client verifies the header at `tip_height`:
    - Equihash PoW (proves the header required real work)
    - `hashBlockCommitments = BLAKE2b-256("ZcashBlockCommit" || mmr_root || auth_data_root || [0u8;32])` (authenticates the MMR root)
 5. Client verifies the MMR Merkle path from the leaf to the authenticated root (proves the block is in the committed chain)

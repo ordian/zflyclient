@@ -56,17 +56,22 @@ pub struct MmrNode {
 /// An MMR inclusion proof for a block, as returned by GetBlockInclusionProof.
 ///
 /// Contains the MMR root and auth data root (for verifying hashBlockCommitments
-/// against the tip header), plus the Merkle path proving the block is included.
+/// against the block header at `tip_height`), plus the Merkle path proving the
+/// block is included.
 #[derive(Debug, Clone)]
 pub struct BlockInclusionProof {
-    /// 32-byte MMR root hash for the current chain tip.
+    /// 32-byte MMR root committed in the block at `tip_height`.
     pub mmr_root: [u8; 32],
-    /// 32-byte ZIP-244 auth data root for the current chain tip.
+    /// 32-byte ZIP-244 auth data root for the block at `tip_height`.
     pub auth_data_root: [u8; 32],
     /// The MMR leaf entry for the requested block.
     pub leaf: MmrNode,
     /// Sibling nodes along the Merkle path to the root.
     pub siblings: Vec<MmrNode>,
+    /// Height of the block whose header commits to `mmr_root` and `auth_data_root`.
+    /// The client should fetch this block's header (via GetBlock) and verify
+    /// `hashBlockCommitments` against it.
+    pub tip_height: u32,
 }
 
 /// Parsed block header fields.
